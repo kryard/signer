@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"kryard/signer/internal/envelope"
 	"kryard/signer/internal/keys"
@@ -12,20 +13,15 @@ import (
 
 // createKeyRequest is the request body for POST /internal/keys/create.
 type createKeyRequest struct {
-	OrganizationID      string `json:"organizationId"`
-	PrivateKeyID        string `json:"privateKeyId"`
-	Environment         string `json:"environment"`
-	Name                string `json:"name"`
-	// Curve selects the key type: CURVE_SECP256K1 (EVM, default) or CURVE_ED25519
-	// (Solana and other ed25519 chains).
+	OrganizationID string `json:"organizationId"`
+	PrivateKeyID   string `json:"privateKeyId"`
+	Environment    string `json:"environment"`
+	Name           string `json:"name"`
+	// Curve selects the key type, e.g. CURVE_SECP256K1 (EVM, default),
+	// CURVE_ED25519 (Solana), or CURVE_P256. Defaults to secp256k1.
 	Curve               string `json:"curve,omitempty"`
 	ImportPrivateKeyHex string `json:"importPrivateKeyHex,omitempty"`
 }
-
-const (
-	curveSecp256k1 = "CURVE_SECP256K1"
-	curveEd25519   = "CURVE_ED25519"
-)
 
 // createKeyResponse is the response body for POST /internal/keys/create.
 // It MUST NOT contain any plaintext key material.
@@ -61,14 +57,16 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Normalize + validate the curve (default secp256k1 for backward compatibility).
-	curve := req.Curve
-	if curve == "" {
-		curve = curveSecp256k1
+	// Resolve the curve from the registry (default secp256k1 for backward
+	// compatibility). Unknown curve → 400.
+	curveName := req.Curve
+	if curveName == "" {
+		curveName = keys.CurveSecp256k1
 	}
-	if curve != curveSecp256k1 && curve != curveEd25519 {
+	curve, ok := keys.Lookup(curveName)
+	if !ok {
 		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": fmt.Sprintf("unsupported curve %q; use CURVE_SECP256K1 or CURVE_ED25519", curve),
+			"error": fmt.Sprintf("unsupported curve %q; supported: %s", curveName, strings.Join(keys.RegisteredCurves(), ", ")),
 		})
 		return
 	}
@@ -84,23 +82,27 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	// Generate or import the key pair for the selected curve.
 	var gen keys.Generated
 	var err error
-	switch curve {
-	case curveEd25519:
-		if req.ImportPrivateKeyHex != "" {
-			gen, err = keys.Ed25519FromSeedHex(req.ImportPrivateKeyHex)
-		} else {
-			gen, err = keys.GenerateEd25519()
-		}
-	default: // curveSecp256k1
-		if req.ImportPrivateKeyHex != "" {
-			gen, err = keys.FromPrivateKeyHex(req.ImportPrivateKeyHex)
-		} else {
-			gen, err = keys.GenerateSecp256k1()
-		}
+	if req.ImportPrivateKeyHex != "" {
+		gen, err = curve.Import(req.ImportPrivateKeyHex)
+	} else {
+		gen, err = curve.Generate()
 	}
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
 			"error": "key generation failed: " + err.Error(),
+		})
+		return
+	}
+
+	// Derive the curve's default chain address from the public key. Address
+	// derivation is decoupled from key generation and owned by the curve itself
+	// (inline; the signer has no address engine). The plaintext private key has
+	// NOT yet been envelope-encrypted, so zeroize it before returning on failure.
+	defaultAddress, derr := curve.DefaultAddress(gen.PublicKey)
+	if derr != nil {
+		keys.Zeroize(gen.PrivateKey)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "address derivation failed: " + derr.Error(),
 		})
 		return
 	}
@@ -119,7 +121,7 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 
 	// Zeroize the plaintext private key immediately after encryption, regardless
 	// of whether encryption succeeded. The key must never linger in memory.
-	zeroize(gen.PrivateKey)
+	keys.Zeroize(gen.PrivateKey)
 
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
@@ -131,8 +133,8 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	resp := createKeyResponse{
 		PrivateKeyID:        req.PrivateKeyID,
 		PublicKey:           gen.PublicKey,
-		Addresses:           []string{gen.Address},
-		Curve:               curve,
+		Addresses:           []string{defaultAddress},
+		Curve:               curveName,
 		EncryptedPrivateKey: base64.StdEncoding.EncodeToString(enc.Ciphertext),
 		EncryptedDataKey:    base64.StdEncoding.EncodeToString(enc.WrappedDEK),
 		KMSProvider:         enc.KMSProvider,
@@ -142,9 +144,7 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// zeroize overwrites a byte slice to clear key material from memory.
-func zeroize(b []byte) {
-	for i := range b {
-		b[i] = 0
-	}
-}
+// zeroize overwrites a byte slice to clear key material from memory. It wraps
+// keys.Zeroize and is retained for callers in this package (e.g. the transaction
+// handlers) that decrypt key material directly.
+func zeroize(b []byte) { keys.Zeroize(b) }

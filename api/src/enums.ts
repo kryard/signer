@@ -23,6 +23,7 @@ export const RECOGNIZED_ACTIVITY_TYPES: ReadonlySet<string> = new Set(Object.val
 export const CURVE = {
   SECP256K1: "CURVE_SECP256K1", // EVM (and other secp256k1 chains)
   ED25519: "CURVE_ED25519", // Solana and other ed25519 chains
+  P256: "CURVE_P256", // NIST P-256 (secp256r1)
 } as const;
 export type Curve = (typeof CURVE)[keyof typeof CURVE];
 

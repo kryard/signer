@@ -428,5 +428,5 @@ func containsAt(s, sub string) bool {
 }
 
 // Compile-time check that the keys and envelope packages are used.
-var _ = keys.SignDigest
+var _ = keys.Lookup
 var _ = envelope.Encrypt
