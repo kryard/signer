@@ -63,6 +63,35 @@ cd dashboard && npm install \
 
 Open <http://localhost:5173>. Full walkthrough: **[docs/local-development.md](docs/local-development.md)**.
 
+## Use it from code — `@kryard/sdk`
+
+The signer speaks the Turnkey-compatible activity API, so the published
+[`@kryard/sdk`](https://www.npmjs.com/package/@kryard/sdk) talks to your **local**
+signer the same way it talks to the hosted one — point `baseUrl` at your API. Every
+call is X-Stamp-authenticated and org-scoped (the same path runs in production), but
+in dev mode you don't need a managed account: `bootstrapLocalClient` mints a throwaway
+org + API key through the unauthenticated dev bootstrap and hands back a ready client.
+
+```ts
+import { bootstrapLocalClient } from "@kryard/sdk"; // >= 0.3.0
+
+const { client } = await bootstrapLocalClient(); // http://localhost:8787
+
+const { addresses } = await client.createPrivateKey({
+  name: "local-evm",
+  curve: "CURVE_SECP256K1",
+});
+
+// Signing additionally needs the API run with POLICY_BYPASS_ALLOWED=true (or a policy):
+const { signedTransaction } = await client.signTransaction({
+  signWith: addresses[0].address,
+  unsignedTransaction: "0x02ef…",
+});
+```
+
+Self-mint the same credentials by hand with two POSTs (`/admin/dev/org` →
+`/admin/dev/api-key`) — see [docs/local-development.md](docs/local-development.md).
+
 ## Documentation
 
 - [Architecture](docs/architecture.md) — components, invariants, the KMS seam, the API surface.
@@ -77,7 +106,9 @@ are **not** part of this repository.
 
 ## Related
 
-- [`@kryard/sdk`](https://www.npmjs.com/package/@kryard/sdk) — client SDK for Kryard's managed relay.
+- [`@kryard/sdk`](https://www.npmjs.com/package/@kryard/sdk) — the Kryard SDK. Its
+  **signing** client (`KryardClient`) works against this self-hosted signer (see
+  above); its relay/sponsor helpers target the hosted managed-relay tier.
 
 ## Contributing
 
