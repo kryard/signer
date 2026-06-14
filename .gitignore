@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+**/dist/
+.wrangler/
+**/.wrangler/
+
+# Go build artifacts
+*.zip
+signer/bootstrap
+
+# Secrets / local env — NEVER commit
+.dev.vars
+**/.dev.vars
+.env
+.env.*
+!.env.example
+*.local
+
+# Terraform — state and vars hold live infra + secrets
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# Editor / OS
+.DS_Store
+*.log
+.idea/
+.vscode/

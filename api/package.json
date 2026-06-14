@@ -1,0 +1,36 @@
+{
+  "name": "@kryard/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx scripts/migrate.ts",
+    "cutover-check": "tsx scripts/cutover-check.ts",
+    "dev": "bash scripts/dev.sh",
+    "sign-demo": "tsx scripts/sign-demo.mts",
+    "dev-pipeline-test": "tsx scripts/dev-pipeline-test.mts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
+    "aws4fetch": "^1.0.20",
+    "hono": "^4.6.0",
+    "kysely": "^0.28.17",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240909.0",
+    "@testcontainers/postgresql": "^10.13.0",
+    "@turnkey/api-key-stamper": "^0.6.6",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "canonicalize": "^3.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "viem": "^2.52.2",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.98.0"
+  }
+}

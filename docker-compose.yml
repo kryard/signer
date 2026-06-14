@@ -1,0 +1,45 @@
+# Local development dependencies for Kryard.
+#
+#   docker compose up -d            # Postgres only (the default local-dev path)
+#   docker compose --profile kms up -d   # also start the local-kms emulator
+#
+# The signer defaults to an in-process AES-256-GCM KMS provider (KMS_PROVIDER=local),
+# so you do NOT need the kms service for local dev. The local-kms emulator is the
+# optional path for exercising the AWS KMS code (KMS_PROVIDER=aws + KMS_ENDPOINT)
+# without a real AWS account.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kryard-postgres
+    environment:
+      POSTGRES_USER: kryard
+      POSTGRES_PASSWORD: kryard
+      POSTGRES_DB: kryard
+    ports:
+      - "5432:5432"
+    volumes:
+      - kryard-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kryard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional: an AWS KMS emulator, so KMS_PROVIDER=aws can be tested locally.
+  # Point the signer at it with KMS_ENDPOINT=http://localhost:8089 and
+  # KMS_KEY_ID=alias/kryard-dev-wallet-signing (seeded below). Any dummy AWS
+  # credentials work (AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test).
+  kms:
+    image: nsmiles/local-kms:latest
+    container_name: kryard-local-kms
+    profiles: ["kms"]
+    ports:
+      - "8089:8080"
+    environment:
+      KMS_REGION: us-east-1
+      KMS_SEED_PATH: /init/seed.yaml
+    volumes:
+      - ./infra/local-kms/seed.yaml:/init/seed.yaml:ro
+
+volumes:
+  kryard-pgdata:

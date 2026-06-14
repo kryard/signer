@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+
+# Local env files (may contain machine-specific config; never commit)
+.env*.local
+
+*.log

@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and adjust. All have sensible defaults.
+region      = "us-east-1"
+name_prefix = "kryard-dev"
+
+# Optional: IAM ARNs that may administer (not use) the dev KMS key.
+# kms_admin_arns = ["arn:aws:iam::<account-id>:user/<you>"]
+
+# Zip path defaults to ../../signer/dist/signer-lambda.zip (from build-lambda.sh).
+# signer_lambda_zip = "../../signer/dist/signer-lambda.zip"
+
+# Enable only for a controlled key-import window:
+# allow_key_import = true

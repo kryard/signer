@@ -1,0 +1,12 @@
+# Standalone workspace root for the API service.
+# These transitive build scripts are acknowledged and skipped: esbuild/workerd/sharp
+# ship prebuilt binaries (or are only needed for `wrangler dev`, not tests), and
+# ssh2/cpu-features have pure-JS fallbacks (Testcontainers talks to the local Docker
+# socket, not SSH). Skipping keeps `pnpm install` clean under pnpm 11's policy.
+allowBuilds:
+  cpu-features: false
+  esbuild: false
+  protobufjs: false
+  sharp: false
+  ssh2: false
+  workerd: false

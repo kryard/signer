@@ -1,0 +1,52 @@
+# Dev environment variables for `wrangler dev`.
+# Copy to .dev.vars (gitignored) and fill in your values.
+# These are EXAMPLE placeholders only — never commit real secrets.
+#
+# ── Database ─────────────────────────────────────────────────────────────────
+#
+# Option A: Neon serverless driver (recommended for dev).
+DATABASE_DRIVER=neon
+DATABASE_URL=postgres://<user>:<password>@<host>.<region>.aws.neon.tech/<dbname>?sslmode=require
+#
+# Option B: Hyperdrive → Postgres (no code change required; set DATABASE_DRIVER
+# to anything other than "neon", or omit it, and configure the HYPERDRIVE binding
+# in wrangler.jsonc to point at your connection string).
+# DATABASE_URL=postgres://... (set in Hyperdrive config, not here)
+#
+# ── Signer ────────────────────────────────────────────────────────────────────
+#
+# URL of the Go signer service (../signer). For local dev it listens on :8081.
+SIGNER_BASE_URL=http://localhost:8081
+#
+# Auth mode for the signer transport:
+#   plain → local dev (the signer has no public ingress). Default.
+#   sigv4 → signer is behind an AWS Lambda Function URL with AWS_IAM auth.
+SIGNER_AUTH=plain
+#
+# Only needed when SIGNER_AUTH=sigv4 (AWS Lambda Function URL deployment):
+# AWS_ACCESS_KEY_ID=<invoke-only access key id>
+# AWS_SECRET_ACCESS_KEY=<invoke-only secret access key>
+# AWS_REGION=<your-aws-region>
+#
+# ── Dev admin ─────────────────────────────────────────────────────────────────
+#
+# Shared token required on /admin/dev/* via the X-Dev-Admin-Token header.
+DEV_ADMIN_TOKEN=<choose-a-long-random-token>
+#
+# ── Optional gates ────────────────────────────────────────────────────────────
+#
+# Uncomment to allow raw payload signing in dev (off by default).
+# ALLOW_RAW_PAYLOAD_SIGNING=true
+#
+# Uncomment to bypass policy checks for orgs with zero bindings (dev/test only).
+# POLICY_BYPASS_ALLOWED=true
+#
+# ── Hardening ─────────────────────────────────────────────────────────────────
+#
+# Single-use stamps (replay-nonce store). Default ON; set false only for tests
+# that deliberately reuse a stamp.
+# REPLAY_PROTECTION=false
+#
+# Max /public/v1/submit/* requests per minute per organization. Default 120;
+# 0 disables.
+# SUBMIT_RATE_LIMIT=120

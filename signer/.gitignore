@@ -1,0 +1,10 @@
+.bin/
+
+# Compiled binaries from `go build ./cmd/...` left in the module root.
+/signer
+/signer-lambda
+
+# Lambda deployment artifacts (bootstrap binary + zip produced for dev-lambda).
+bootstrap
+*.zip
+dist/

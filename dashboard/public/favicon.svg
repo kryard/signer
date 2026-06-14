@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0A0F0D" />
+  <!-- kryard crystal mark in the Ethereum octahedron silhouette -->
+  <g transform="translate(4 3) scale(0.857)">
+    <polygon points="14,1.6 3.8,14 14,14" fill="#00C16A" opacity="0.95" />
+    <polygon points="14,1.6 14,14 24.2,14" fill="#00C16A" opacity="0.6" />
+    <polygon points="3.8,14 14,14 14,26.4" fill="#00C16A" opacity="0.8" />
+    <polygon points="14,14 24.2,14 14,26.4" fill="#00C16A" opacity="0.45" />
+    <g fill="none" stroke="#F5F7F4" stroke-linejoin="round" stroke-linecap="round">
+      <g opacity="0.3" stroke-width="0.9">
+        <polyline points="3.8,14 14,8.4 24.2,14" />
+        <polyline points="3.8,14 14,19.6 24.2,14" />
+        <line x1="14" y1="1.6" x2="14" y2="26.4" />
+      </g>
+      <path d="M14 1.6 L24.2 14 L14 26.4 L3.8 14 Z" stroke-width="1.4" opacity="0.92" />
+    </g>
+  </g>
+</svg>

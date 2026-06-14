@@ -1,0 +1,15 @@
+# Seed for the local-kms emulator (docker compose --profile kms).
+# Creates one symmetric AES key + a stable alias the signer can reference via
+# KMS_KEY_ID=alias/kryard-dev-wallet-signing. Dev/test ONLY — these backing-key
+# bytes are public and must never be used for anything real.
+Keys:
+  Symmetric:
+    Aes:
+      - Metadata:
+          KeyId: 00000000-1111-2222-3333-444444444444
+        BackingKeys:
+          - 0000000000000000000000000000000000000000000000000000000000000001
+
+Aliases:
+  - AliasName: alias/kryard-dev-wallet-signing
+    TargetKeyId: 00000000-1111-2222-3333-444444444444

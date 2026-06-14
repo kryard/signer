@@ -1,0 +1,26 @@
+{
+  "name": "kryard-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Non-secret config lives here. Secrets are NEVER committed — set them with
+  // `wrangler secret put` (or, for `wrangler dev`, in a gitignored .dev.vars):
+  //   - DATABASE_URL       (Postgres connection string)
+  //   - DEV_ADMIN_TOKEN    (shared token gating /admin/dev/*)
+  //   - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (only if SIGNER_AUTH=sigv4)
+  //
+  // /admin/dev/* is REQUIRED-token-gated (set DEV_ADMIN_TOKEN). /public/v1/* is
+  // the Turnkey-compatible signing API.
+  "vars": {
+    "DATABASE_DRIVER": "neon",
+    // SIGNER_BASE_URL: where the Go signer (../signer) is reachable. Defaults to
+    // local dev. For an AWS Lambda Function URL deployment, override this with the
+    // real URL and set SIGNER_AUTH=sigv4 + AWS_REGION + AWS_* creds (as secrets).
+    "SIGNER_BASE_URL": "http://localhost:8081",
+    // SIGNER_AUTH: "plain" for local dev (the signer has no public ingress);
+    // set to "sigv4" when the signer is behind a Lambda Function URL with AWS_IAM
+    // auth, and provide AWS_REGION + AWS creds.
+    "SIGNER_AUTH": "plain",
+    "DEV_ADMIN_ENABLED": "true"
+  }
+}

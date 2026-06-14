@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ *
+ * Krypton design tokens — Kryard Console edition
+ * Same system as kryard-web (apps/web), but the console defaults to the
+ * dark "ink" surface: deep green-black panels, signal-green accents,
+ * mono technical labels.
+ * ------------------------------------------------------------------ */
+@theme {
+  /* Surfaces */
+  --color-ink: #0a0f0d;
+  --color-ink-2: #0e1512;
+  --color-ink-3: #121a16;
+  --color-forest: #0e5c3f;
+  --color-forest-deep: #082c1f;
+  --color-signal: #00c16a;
+  --color-signal-soft: #1fd37e;
+  --color-paper: #f5f7f4;
+  --color-paper-2: #eceeea;
+  --color-mist: #6b7770;
+  --color-mist-2: #9aa6a0;
+  --color-line: #1c2622;
+  --color-danger: #ff5d5d;
+  --color-amber: #ffb020;
+
+  /* Typography */
+  --font-display: "Clash Display", "Satoshi", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01";
+  }
+
+  ::selection {
+    background-color: var(--color-signal);
+    color: var(--color-ink);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Slim dark scrollbars for tables / JSON panes */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Mono technical eyebrow used across the brand */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* Console form controls */
+  .field-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-ink-3);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-paper);
+    outline: none;
+    transition: border-color 0.2s var(--ease-out-expo);
+  }
+
+  .field-input:focus {
+    border-color: var(--color-signal);
+  }
+
+  .field-input::placeholder {
+    color: var(--color-mist);
+  }
+}
+
+/* Fine grid texture for dark sections */
+@utility grid-lines {
+  background-image: linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-signal) 8%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-signal) 8%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 64px 64px;
+}
