@@ -77,7 +77,7 @@ are **not** part of this repository.
 
 ## Related
 
-- [`@kryard/relay-sdk`](https://www.npmjs.com/package/@kryard/relay-sdk) — client SDK for Kryard's managed relay.
+- [`@kryard/sdk`](https://www.npmjs.com/package/@kryard/sdk) — client SDK for Kryard's managed relay.
 
 ## Contributing
 
