@@ -79,6 +79,13 @@ are **not** part of this repository.
 
 - [`@kryard/relay-sdk`](https://www.npmjs.com/package/@kryard/relay-sdk) — client SDK for Kryard's managed relay.
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). We require a
+signed [Contributor License Agreement](CLA.md) (a one-time comment on your first PR);
+this lets us include your work both here and in the hosted product under an open-core
+model.
+
 ## License
 
 [Apache-2.0](LICENSE). See [NOTICE](NOTICE) for third-party attributions (the signer
