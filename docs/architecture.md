@@ -68,9 +68,24 @@ Turnkey-shaped, `POST`-based, idempotent on identical bodies. Authentication is 
 | `/public/v1/submit/create_wallet` | `/public/v1/query/list_wallets` |
 | `/public/v1/submit/create_wallet_accounts` | `/public/v1/query/whoami` |
 
+## Curves
+
+The signer is multi-curve. Each key carries a `curve` (and `address_format`) that
+flows end-to-end and selects the signing algorithm:
+
+| Curve | Signs | Address | Hash function |
+| --- | --- | --- | --- |
+| `CURVE_SECP256K1` | EVM transactions + raw payloads (ECDSA) | `ADDRESS_FORMAT_ETHEREUM` (EIP-55) | `HASH_FUNCTION_KECCAK256` / `HASH_FUNCTION_NO_OP` |
+| `CURVE_ED25519` | raw messages (e.g. Solana tx messages) | `ADDRESS_FORMAT_SOLANA` (base58) | `HASH_FUNCTION_NOT_APPLICABLE` |
+
+ed25519 signs the message directly (it hashes internally), so the payload is **not**
+pre-hashed; the 64-byte signature is returned split into `r` (first 32 bytes) and
+`s` (last 32 bytes), matching the response shape.
+
 ## Crypto
 
 The signer does **not** hand-roll cryptography. secp256k1, ECDSA, Keccak-256, RLP,
-EVM transaction types, and Ethereum address derivation all come from
-[go-ethereum](https://github.com/ethereum/go-ethereum); AES-256-GCM and SHA-256 are
-Go standard library.
+EVM transaction types, and Ethereum address derivation come from
+[go-ethereum](https://github.com/ethereum/go-ethereum); ed25519 is the Go standard
+library; Solana base58 addresses use [mr-tron/base58](https://github.com/mr-tron/base58);
+AES-256-GCM and SHA-256 are Go standard library.

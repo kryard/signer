@@ -28,8 +28,11 @@ type signRawPayloadRequest struct {
 	KMSKeyID            string            `json:"kmsKeyId"`
 	KMSProvider         string            `json:"kmsProvider"` // "local" | "aws"; forwarded from the key row
 	EncryptionContext   map[string]string `json:"encryptionContext"`
-	Payload             string            `json:"payload"`      // hex (with or without 0x prefix)
-	HashFunction        string            `json:"hashFunction"` // HASH_FUNCTION_KECCAK256 | HASH_FUNCTION_NO_OP
+	// Curve of the key being signed with: CURVE_SECP256K1 (default) or CURVE_ED25519.
+	// Forwarded from the key row by the API service.
+	Curve        string `json:"curve,omitempty"`
+	Payload      string `json:"payload"`      // hex (with or without 0x prefix)
+	HashFunction string `json:"hashFunction"` // secp256k1: KECCAK256|NO_OP; ed25519: NOT_APPLICABLE
 	// EvaluatedInputHash is the hash the API computed when evaluating policy.
 	// When non-empty, the signer re-computes it and refuses on mismatch (409).
 	EvaluatedInputHash string `json:"evaluatedInputHash,omitempty"`
@@ -100,13 +103,32 @@ func (s *Server) handleSignRawPayload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate hashFunction.
-	switch req.HashFunction {
-	case "HASH_FUNCTION_KECCAK256", "HASH_FUNCTION_NO_OP":
-		// valid
+	// Normalize the curve (default secp256k1) and validate the hashFunction for it.
+	curve := req.Curve
+	if curve == "" {
+		curve = curveSecp256k1
+	}
+	switch curve {
+	case curveEd25519:
+		if req.HashFunction != "HASH_FUNCTION_NOT_APPLICABLE" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "ed25519 keys require hashFunction HASH_FUNCTION_NOT_APPLICABLE",
+			})
+			return
+		}
+	case curveSecp256k1:
+		switch req.HashFunction {
+		case "HASH_FUNCTION_KECCAK256", "HASH_FUNCTION_NO_OP":
+			// valid
+		default:
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": fmt.Sprintf("unsupported hashFunction %q for secp256k1; use HASH_FUNCTION_KECCAK256 or HASH_FUNCTION_NO_OP", req.HashFunction),
+			})
+			return
+		}
 	default:
 		writeJSON(w, http.StatusBadRequest, map[string]string{
-			"error": fmt.Sprintf("unsupported hashFunction %q; use HASH_FUNCTION_KECCAK256 or HASH_FUNCTION_NO_OP", req.HashFunction),
+			"error": fmt.Sprintf("unsupported curve %q; use CURVE_SECP256K1 or CURVE_ED25519", curve),
 		})
 		return
 	}
@@ -173,25 +195,9 @@ func (s *Server) handleSignRawPayload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Compute the digest per the requested hash function.
-	var digest []byte
-	switch req.HashFunction {
-	case "HASH_FUNCTION_KECCAK256":
-		digest = crypto.Keccak256(payloadBytes)
-	case "HASH_FUNCTION_NO_OP":
-		if len(payloadBytes) != 32 {
-			zeroize(privKeyBytes)
-			writeJSON(w, http.StatusBadRequest, map[string]string{
-				"error": fmt.Sprintf("HASH_FUNCTION_NO_OP requires a 32-byte payload, got %d bytes", len(payloadBytes)),
-			})
-			return
-		}
-		digest = payloadBytes
-	}
-
-	// EvaluatedInputHash re-check: if the API passed a hash, verify it matches
-	// what the signer is about to sign. This is computed BEFORE signing so that
-	// a mismatch prevents the signature from being produced.
+	// EvaluatedInputHash re-check: if the API passed a hash, verify it matches what
+	// the signer is about to sign. Computed BEFORE signing so a mismatch prevents a
+	// signature from being produced. Curve-agnostic (hashes the request payload).
 	if req.EvaluatedInputHash != "" {
 		activityType := req.ActivityType
 		if activityType == "" {
@@ -213,50 +219,81 @@ func (s *Server) handleSignRawPayload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Sign the digest with the private key.
-	r2, sigS, sigV, err := keys.SignDigest(privKeyBytes, digest)
+	// Sign per the key's curve. secp256k1 signs a digest (ECDSA, recoverable v);
+	// ed25519 signs the message directly (no pre-hash). Both yield a 64-byte r||s.
+	var (
+		sigR, sigS, sigV string
+		pubKeyHex        string
+		sig64            []byte // r||s (64 bytes) — for the signature-hash receipt field
+	)
 
-	// ZEROIZE the private key immediately after signing, regardless of outcome.
-	zeroize(privKeyBytes)
+	if curve == curveEd25519 {
+		sig, signErr := keys.SignEd25519(privKeyBytes, payloadBytes)
+		pkHex, pkErr := keys.Ed25519PublicKeyHex(privKeyBytes)
+		zeroize(privKeyBytes) // immediately after deriving sig + pubkey from the seed
+		if signErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "signing failed: " + signErr.Error()})
+			return
+		}
+		sig64 = sig
+		sigR = hex.EncodeToString(sig[0:32])
+		sigS = hex.EncodeToString(sig[32:64])
+		sigV = "00" // not applicable for ed25519; fixed for response-shape compatibility
+		if pkErr == nil {
+			pubKeyHex = pkHex
+		}
+	} else {
+		// secp256k1: compute the digest per the requested hash function.
+		var digest []byte
+		switch req.HashFunction {
+		case "HASH_FUNCTION_KECCAK256":
+			digest = crypto.Keccak256(payloadBytes)
+		case "HASH_FUNCTION_NO_OP":
+			if len(payloadBytes) != 32 {
+				zeroize(privKeyBytes)
+				writeJSON(w, http.StatusBadRequest, map[string]string{
+					"error": fmt.Sprintf("HASH_FUNCTION_NO_OP requires a 32-byte payload, got %d bytes", len(payloadBytes)),
+				})
+				return
+			}
+			digest = payloadBytes
+		}
 
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": "signing failed: " + err.Error(),
-		})
-		return
-	}
+		r2, s2, v2, signErr := keys.SignDigest(privKeyBytes, digest)
+		zeroize(privKeyBytes) // immediately after signing, regardless of outcome
+		if signErr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "signing failed: " + signErr.Error()})
+			return
+		}
+		sigR, sigS, sigV = r2, s2, v2
 
-	// Derive the public key from the private key for the receipt.
-	// We re-derive from the hex fields in the request encryption context since
-	// the key is already zeroized. However, we can use the encryptionContext
-	// to identify the key; the publicKey comes from the stored row which the
-	// API should provide. For now, derive from r/s/v + digest via SigToPub.
-	rBytes, _ := hex.DecodeString(r2)
-	sBytes, _ := hex.DecodeString(sigS)
-	vByte := byte(0)
-	if sigV == "01" {
-		vByte = 1
-	}
-	sig65 := make([]byte, 65)
-	copy(sig65[0:32], rBytes)
-	copy(sig65[32:64], sBytes)
-	sig65[64] = vByte
+		// Reassemble [R||S||V] to recover the public key for the receipt.
+		rBytes, _ := hex.DecodeString(r2)
+		sBytes, _ := hex.DecodeString(s2)
+		vByte := byte(0)
+		if v2 == "01" {
+			vByte = 1
+		}
+		sig65 := make([]byte, 65)
+		copy(sig65[0:32], rBytes)
+		copy(sig65[32:64], sBytes)
+		sig65[64] = vByte
+		sig64 = sig65[:64]
 
-	recoveredPub, pubErr := crypto.SigToPub(digest, sig65)
-	pubKeyHex := ""
-	if pubErr == nil {
-		pubKeyHex = hex.EncodeToString(crypto.CompressPubkey(recoveredPub))
+		if recoveredPub, pubErr := crypto.SigToPub(digest, sig65); pubErr == nil {
+			pubKeyHex = hex.EncodeToString(crypto.CompressPubkey(recoveredPub))
+		}
 	}
 
 	// Build signer receipt fields (hashes only — no key material).
 	payloadHashBytes := sha256.Sum256(payloadBytes)
 	payloadHashHex := hex.EncodeToString(payloadHashBytes[:])
 
-	sigHashBytes := sha256.Sum256(sig65[:64]) // hash of r||s
+	sigHashBytes := sha256.Sum256(sig64) // hash of r||s
 	sigHashHex := hex.EncodeToString(sigHashBytes[:])
 
 	resp := signRawPayloadResponse{
-		R: r2,
+		R: sigR,
 		S: sigS,
 		V: sigV,
 		SignerReceipt: signerReceiptResponse{

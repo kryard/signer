@@ -1,12 +1,12 @@
 # Kryard
 
-**Open-source, Turnkey-compatible EVM signing infrastructure.**
+**Open-source, Turnkey-compatible signing infrastructure — EVM and Solana.**
 
 Kryard is a remote key-signing service: create private keys and wallets, define
-signing policies, and request EVM signatures over a **Turnkey-wire-compatible** API —
-**without your application ever touching private key material**. Private keys are
-generated inside an isolated signer and encrypted at rest with envelope encryption;
-the API tier can never decrypt them.
+signing policies, and request signatures — **secp256k1** (EVM) and **ed25519**
+(Solana) — over a **Turnkey-wire-compatible** API, **without your application ever
+touching private key material**. Private keys are generated inside an isolated signer
+and encrypted at rest with envelope encryption; the API tier can never decrypt them.
 
 It's a drop-in for Turnkey's secp256k1 EVM signing: cutover is a single
 `TURNKEY_BASE_URL` swap.
@@ -24,7 +24,7 @@ Client / SDK / Dashboard
 | Path | What |
 | --- | --- |
 | **`api/`** | The Turnkey-compatible HTTP API — activities, idempotency, `X-Stamp` auth, a deterministic policy engine, and EVM transaction / raw-payload signing. Cloudflare Worker (Hono) over Postgres. |
-| **`signer/`** | The isolated Go signer. Generates secp256k1 keys, signs EVM transactions (legacy / EIP-1559 / EIP-7702) and raw payloads, and does KMS envelope encryption. Audited crypto only (go-ethereum). |
+| **`signer/`** | The isolated Go signer. Generates **secp256k1** (EVM) and **ed25519** (Solana) keys; signs EVM transactions (legacy / EIP-1559 / EIP-7702), raw payloads, and ed25519 messages; does KMS envelope encryption. Audited crypto only (go-ethereum; ed25519 from the Go stdlib). |
 | **`dashboard/`** | A React console — keys, wallets, policies, activities, and a signing playground. Runs locally with no auth. |
 | **`infra/aws-dev/`** | Terraform for a dev profile: a KMS key + the signer as an AWS Lambda behind an IAM-auth Function URL. |
 
@@ -37,8 +37,8 @@ Client / SDK / Dashboard
   idempotency scoped per organization.
 - **Signing is policy-bound.** A deterministic, fail-closed policy engine gates every
   signature; the signer re-verifies the policy decision before signing.
-- **No hand-rolled crypto.** secp256k1, ECDSA, Keccak-256, RLP, and address derivation
-  come from go-ethereum.
+- **No hand-rolled crypto.** secp256k1, ECDSA, Keccak-256, RLP, and EVM address
+  derivation come from go-ethereum; ed25519 is the Go standard library.
 - **Runs with no cloud.** The signer ships an in-process KMS provider, so the whole
   stack runs on your laptop — and the same code path runs against real AWS KMS in
   production.

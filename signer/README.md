@@ -1,18 +1,28 @@
 # signer
 
-The isolated **EVM signer**. It generates secp256k1 keys, signs EVM transactions
-(legacy / EIP-1559 / EIP-7702) and raw payloads, and performs **KMS envelope
-encryption** so private keys are never stored or returned in plaintext.
+The isolated signer. It generates **secp256k1** (EVM) and **ed25519** (Solana) keys,
+signs EVM transactions (legacy / EIP-1559 / EIP-7702), raw payloads, and ed25519
+messages, and performs **KMS envelope encryption** so private keys are never stored
+or returned in plaintext.
 
 It exposes a **private internal API only** — never public ingress. The
 [`api/`](../api) service calls it; end users never reach it directly.
+
+## Curves
+
+A key's `curve` selects the algorithm. `CURVE_SECP256K1` signs an ECDSA digest
+(`HASH_FUNCTION_KECCAK256` / `HASH_FUNCTION_NO_OP`) and derives an EIP-55 Ethereum
+address. `CURVE_ED25519` signs the message directly (`HASH_FUNCTION_NOT_APPLICABLE`,
+no pre-hash) and derives a base58 Solana address; the 64-byte signature is returned
+as `r` (first 32 bytes) + `s` (last 32 bytes).
 
 ## Crypto
 
 No hand-rolled cryptography. secp256k1, ECDSA, Keccak-256, RLP, EVM transaction
 types, and Ethereum address derivation come from
-[go-ethereum](https://github.com/ethereum/go-ethereum); AES-256-GCM and SHA-256 are
-the Go standard library.
+[go-ethereum](https://github.com/ethereum/go-ethereum); ed25519 is the Go standard
+library; Solana base58 uses [mr-tron/base58](https://github.com/mr-tron/base58);
+AES-256-GCM and SHA-256 are the Go standard library.
 
 ## Build & test
 

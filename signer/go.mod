@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.53.1
 	github.com/ethereum/go-ethereum v1.17.3
 	github.com/holiman/uint256 v1.3.2
+	github.com/mr-tron/base58 v1.3.0
 )
 
 require (

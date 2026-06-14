@@ -63,6 +63,8 @@ export interface SignerCreateKeyRequest {
   privateKeyId: string;
   environment: string;
   name: string;
+  /** CURVE_SECP256K1 (EVM, default) or CURVE_ED25519 (Solana, etc.). */
+  curve?: string;
   importPrivateKeyHex?: string;
 }
 
@@ -90,8 +92,10 @@ export interface SignerSignRawPayloadRequest {
   kmsKeyId: string;
   kmsProvider: string;         // "local" | "aws"; forwarded from the key row
   encryptionContext: Record<string, string>;
+  /** Curve of the key, forwarded from the key row: CURVE_SECP256K1 | CURVE_ED25519. */
+  curve?: string;
   payload: string;      // hex string (with or without 0x prefix)
-  hashFunction: string; // HASH_FUNCTION_KECCAK256 | HASH_FUNCTION_NO_OP
+  hashFunction: string; // secp256k1: KECCAK256|NO_OP; ed25519: NOT_APPLICABLE
   /** Policy binding hash to re-check in the signer. If present, signer verifies it. */
   evaluatedInputHash?: string;
   /** Activity type forwarded for the evaluatedInputHash computation in the signer. */
@@ -279,7 +283,7 @@ export async function signRawPayload(
 
 /**
  * POST ${baseUrl}/internal/keys/create — ask the signer to generate (or import)
- * and envelope-encrypt a secp256k1 key pair.
+ * and envelope-encrypt a key pair for the requested curve (secp256k1 or ed25519).
  *
  * Throws TurnkeyError(500, "signer unavailable") on any non-2xx response so that
  * the activity is recorded as retriable PENDING rather than a hard failure.

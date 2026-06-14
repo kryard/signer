@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"kryard/signer/internal/envelope"
@@ -15,8 +16,16 @@ type createKeyRequest struct {
 	PrivateKeyID        string `json:"privateKeyId"`
 	Environment         string `json:"environment"`
 	Name                string `json:"name"`
+	// Curve selects the key type: CURVE_SECP256K1 (EVM, default) or CURVE_ED25519
+	// (Solana and other ed25519 chains).
+	Curve               string `json:"curve,omitempty"`
 	ImportPrivateKeyHex string `json:"importPrivateKeyHex,omitempty"`
 }
+
+const (
+	curveSecp256k1 = "CURVE_SECP256K1"
+	curveEd25519   = "CURVE_ED25519"
+)
 
 // createKeyResponse is the response body for POST /internal/keys/create.
 // It MUST NOT contain any plaintext key material.
@@ -52,6 +61,18 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize + validate the curve (default secp256k1 for backward compatibility).
+	curve := req.Curve
+	if curve == "" {
+		curve = curveSecp256k1
+	}
+	if curve != curveSecp256k1 && curve != curveEd25519 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": fmt.Sprintf("unsupported curve %q; use CURVE_SECP256K1 or CURVE_ED25519", curve),
+		})
+		return
+	}
+
 	// Gate key import behind ALLOW_KEY_IMPORT.
 	if req.ImportPrivateKeyHex != "" && !s.deps.AllowImport {
 		writeJSON(w, http.StatusForbidden, map[string]string{
@@ -60,13 +81,22 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate or import the secp256k1 key pair.
+	// Generate or import the key pair for the selected curve.
 	var gen keys.Generated
 	var err error
-	if req.ImportPrivateKeyHex != "" {
-		gen, err = keys.FromPrivateKeyHex(req.ImportPrivateKeyHex)
-	} else {
-		gen, err = keys.GenerateSecp256k1()
+	switch curve {
+	case curveEd25519:
+		if req.ImportPrivateKeyHex != "" {
+			gen, err = keys.Ed25519FromSeedHex(req.ImportPrivateKeyHex)
+		} else {
+			gen, err = keys.GenerateEd25519()
+		}
+	default: // curveSecp256k1
+		if req.ImportPrivateKeyHex != "" {
+			gen, err = keys.FromPrivateKeyHex(req.ImportPrivateKeyHex)
+		} else {
+			gen, err = keys.GenerateSecp256k1()
+		}
 	}
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{
@@ -102,7 +132,7 @@ func (s *Server) handleCreateKey(w http.ResponseWriter, r *http.Request) {
 		PrivateKeyID:        req.PrivateKeyID,
 		PublicKey:           gen.PublicKey,
 		Addresses:           []string{gen.Address},
-		Curve:               "CURVE_SECP256K1",
+		Curve:               curve,
 		EncryptedPrivateKey: base64.StdEncoding.EncodeToString(enc.Ciphertext),
 		EncryptedDataKey:    base64.StdEncoding.EncodeToString(enc.WrappedDEK),
 		KMSProvider:         enc.KMSProvider,

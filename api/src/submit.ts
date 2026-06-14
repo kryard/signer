@@ -90,6 +90,7 @@ const createPrivateKeys: ActivityHandler = async ({ req, signerBaseUrl, signerFe
   const importPrivateKeyHex = typeof params.importPrivateKeyHex === "string"
     ? params.importPrivateKeyHex
     : undefined;
+  const curve = typeof params.curve === "string" ? params.curve : "CURVE_SECP256K1";
 
   // Generate a stable private_key_id for this key before we call the signer,
   // so the encryption context is bound to a real id that we will store.
@@ -101,6 +102,7 @@ const createPrivateKeys: ActivityHandler = async ({ req, signerBaseUrl, signerFe
     privateKeyId,
     environment,
     name,
+    curve,
     ...(importPrivateKeyHex !== undefined ? { importPrivateKeyHex } : {}),
   };
 
@@ -146,15 +148,17 @@ const createPrivateKeys: ActivityHandler = async ({ req, signerBaseUrl, signerFe
 };
 
 // ---------------------------------------------------------------------------
-// Helper: mint one secp256k1 key via the signer + build NewPrivateKey row data.
+// Helper: mint one key (for the given curve) via the signer + build NewPrivateKey
+// row data.
 // ---------------------------------------------------------------------------
 async function mintKey(
   signerBaseUrl: string,
   organizationId: string,
   name: string,
   environment: string,
+  curve: string,
   signerFetch: SignerFetch = plainFetch,
-): Promise<{ privateKey: NewPrivateKey; address: string; privateKeyId: string }> {
+): Promise<{ privateKey: NewPrivateKey; address: string; privateKeyId: string; curve: string }> {
   const { randomUUID } = await import("node:crypto");
   const privateKeyId = randomUUID();
 
@@ -163,6 +167,7 @@ async function mintKey(
     privateKeyId,
     environment,
     name,
+    curve,
   };
 
   const signerResp = await createKey(signerBaseUrl, signerReq, signerFetch);
@@ -182,7 +187,7 @@ async function mintKey(
     encryptionContext: JSON.stringify(signerResp.encryptionContext),
   };
 
-  return { privateKey, address: primaryAddress, privateKeyId };
+  return { privateKey, address: primaryAddress, privateKeyId, curve: signerResp.curve };
 }
 
 // ---------------------------------------------------------------------------
@@ -225,14 +230,17 @@ const createWallet: ActivityHandler = async ({ req, signerBaseUrl, signerFetch }
   for (const acct of accountsParam) {
     const acctName = typeof acct.name === "string" ? acct.name : walletName;
     const curve = typeof acct.curve === "string" ? acct.curve : "CURVE_SECP256K1";
-    const addressFormat = typeof acct.addressFormat === "string" ? acct.addressFormat : "ADDRESS_FORMAT_ETHEREUM";
+    const addressFormat = typeof acct.addressFormat === "string"
+      ? acct.addressFormat
+      : curve === "CURVE_ED25519" ? "ADDRESS_FORMAT_SOLANA" : "ADDRESS_FORMAT_ETHEREUM";
     const path = typeof acct.path === "string" ? acct.path : null;
 
-    const { privateKey, address, privateKeyId } = await mintKey(
+    const { privateKey, address, privateKeyId, curve: keyCurve } = await mintKey(
       signerBaseUrl,
       req.organizationId,
       acctName,
       environment,
+      curve,
       signerFetch,
     );
 
@@ -242,7 +250,7 @@ const createWallet: ActivityHandler = async ({ req, signerBaseUrl, signerFetch }
       organizationId: req.organizationId,
       walletId,
       privateKeyId,
-      curve,
+      curve: keyCurve,
       addressFormat,
       address,
       path,
@@ -327,14 +335,17 @@ const createWalletAccounts: ActivityHandler = async ({ req, db, signerBaseUrl, s
   for (const acct of accountsParam) {
     const acctName = typeof acct.name === "string" ? acct.name : "account";
     const curve = typeof acct.curve === "string" ? acct.curve : "CURVE_SECP256K1";
-    const addressFormat = typeof acct.addressFormat === "string" ? acct.addressFormat : "ADDRESS_FORMAT_ETHEREUM";
+    const addressFormat = typeof acct.addressFormat === "string"
+      ? acct.addressFormat
+      : curve === "CURVE_ED25519" ? "ADDRESS_FORMAT_SOLANA" : "ADDRESS_FORMAT_ETHEREUM";
     const path = typeof acct.path === "string" ? acct.path : null;
 
-    const { privateKey, address, privateKeyId } = await mintKey(
+    const { privateKey, address, privateKeyId, curve: keyCurve } = await mintKey(
       signerBaseUrl,
       req.organizationId,
       acctName,
       environment,
+      curve,
       signerFetch,
     );
 
@@ -344,7 +355,7 @@ const createWalletAccounts: ActivityHandler = async ({ req, db, signerBaseUrl, s
       organizationId: req.organizationId,
       walletId,
       privateKeyId,
-      curve,
+      curve: keyCurve,
       addressFormat,
       address,
       path,
@@ -466,6 +477,7 @@ const signRawPayloadHandler: ActivityHandler = async ({ req, db, signerBaseUrl, 
     kmsKeyId: keyRow.kmsKeyId,
     kmsProvider: keyRow.kmsProvider,
     encryptionContext: keyRow.encryptionContext,
+    curve: keyRow.curve,
     payload,
     hashFunction,
     evaluatedInputHash: policyResult?.evaluatedInputHash,

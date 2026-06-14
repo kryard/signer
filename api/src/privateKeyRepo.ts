@@ -7,6 +7,7 @@ import type { Database } from "./db";
 export interface PrivateKeyCiphertextRow {
   id: string;
   publicKey: string;
+  curve: string; // CURVE_SECP256K1 | CURVE_ED25519 — selects the signing algorithm
   encryptedPrivateKey: string; // base64
   encryptedDataKey: string;    // base64
   kmsProvider: string;
@@ -96,6 +97,7 @@ export async function resolveSignWith(
     .select([
       "id",
       "public_key",
+      "curve",
       "encrypted_private_key",
       "encrypted_data_key",
       "kms_provider",
@@ -124,6 +126,7 @@ export async function resolveSignWith(
   return {
     id: row.id,
     publicKey: row.public_key,
+    curve: row.curve,
     encryptedPrivateKey: row.encrypted_private_key,
     encryptedDataKey: row.encrypted_data_key,
     kmsProvider: row.kms_provider,
