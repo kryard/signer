@@ -155,7 +155,7 @@ export interface TxFields {
    *  the tx `to` is the user's own delegated EOA, not a fixed router. */
   authorizationAddresses?: string[];
   /** EIP-7702 (type-4) recovered authorizing EOAs (one per authorization).
-   *  Policy requires the tx `to` to be one of these — a 7702 sweep must call an
+   *  Policy requires the tx `to` to be one of these — a 7702 batch must call an
    *  EOA that actually authorized the delegation, never an arbitrary target. */
   authorizationAuthorities?: string[];
 }

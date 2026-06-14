@@ -2,7 +2,7 @@
  * Integration test: P7 policy engine + audit hardening.
  *
  * Tests:
- *  (1) conforming sweep tx → ALLOW + signs + COMPLETED + policy_decisions row
+ *  (1) conforming tx → ALLOW + signs + COMPLETED + policy_decisions row
  *  (2) non-conforming variants → DENY + FAILED + reason_code + signer NOT called
  *  (3) raw payload without flag → DENY
  *  (4) audit chain: links + verifyAuditChain passes + tamper breaks it
@@ -25,7 +25,7 @@ const CHAIN_ID_10 = BigInt(10); // Optimism
 const ROUTER_CHAIN1 = "0x1111111111111111111111111111111111111111";
 const ROUTER_CHAIN10 = "0x2222222222222222222222222222222222222222";
 
-// EIP-1559 unsigned tx on chain 1 with sweep() selector and value=0.
+// EIP-1559 unsigned tx on chain 1 with a method selector and value=0.
 // Encoding: 0x02 || rlp([chainId=1, nonce=0, maxPriorityFeePerGas=1e9, maxFeePerGas=1e9,
 //   gas=100000, to=ROUTER_CHAIN1, value=0, data=0x7fea8778, accessList=[]])
 // Generated with: cast rlp-encode
@@ -82,7 +82,7 @@ beforeAll(async () => {
   privateKeyId = json.activity.result.createPrivateKeysResult.privateKeyIds[0];
   keyAddress = json.activity.result.createPrivateKeysResult.addresses[0].address;
 
-  // Seed full sweep policy for chain 1: binding + rule + destination.
+  // Seed full policy for chain 1: binding + rule + destination.
   const { randomUUID } = await import("node:crypto");
 
   await tdb.db.insertInto("policy_bindings").values({
@@ -273,8 +273,8 @@ describe("P7 policy integration", () => {
     expect(true).toBe(true);
   });
 
-  // (1) Conforming sweep tx → ALLOW + COMPLETED + policy_decisions row
-  it("(1) conforming sweep tx → ALLOW, COMPLETED, policy_decisions ALLOW row", async () => {
+  // (1) Conforming tx → ALLOW + COMPLETED + policy_decisions row
+  it("(1) conforming tx → ALLOW, COMPLETED, policy_decisions ALLOW row", async () => {
     if (!goAvailable) return;
 
     const unsignedTx = buildUnsignedEIP1559Tx({

@@ -60,7 +60,7 @@ const LEGACY_UNSIGNED_TX =
   "0xe680843b9aca0082520894000000000000000000000000000000000000dead808083aa36a78080";
 
 /**
- * EIP-1559 unsigned tx with calldata starting 0x7fea8778 (sweep-like selector):
+ * EIP-1559 unsigned tx with calldata starting 0x7fea8778 (example selector):
  *   nonce=1, gas=100000, to=0x...dEaD, value=0
  *   data=0x7fea8778abcdef010203 (10 bytes; methodSelector = 0x7fea8778)
  *

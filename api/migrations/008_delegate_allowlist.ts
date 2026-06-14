@@ -3,10 +3,10 @@ import { Kysely, sql } from "kysely";
 /**
  * 008 — EIP-7702 delegate-implementation allowlist (Workstream A).
  *
- * For a type-4 (EIP-7702) sweep, the transaction `to` is the user's OWN delegated
+ * For a type-4 (EIP-7702) call, the transaction `to` is the user's OWN delegated
  * EOA — variable per user — so the wallet_destination_allowlist (which pins `to`)
  * does not apply. The security-relevant value is instead the delegation TARGET:
- * the SweepDelegate implementation each authorization points to. This table
+ * the delegate implementation each authorization points to. This table
  * allowlists those delegate impls per (private_key_id, chain_id); a type-4 tx
  * whose authorization delegates to an address NOT in this list is denied
  * (DELEGATE_NOT_ALLOWED), fail-closed.

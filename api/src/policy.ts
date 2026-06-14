@@ -241,7 +241,7 @@ async function evaluateSignTransactionPolicy(
 
   // 3c. methodSelector must be in method_selector_allowlist.
   // Empty selector (data < 4 bytes / native transfer) is ALWAYS denied: a dataless
-  // tx is never a sweep() and a misconfigured [""] allowlist must not open arbitrary
+  // tx never carries a method call, and a misconfigured [""] allowlist must not open arbitrary
   // value-less/dataless transfers.
   const allowlist = rule.method_selector_allowlist as string[];
   const selector = txFields.methodSelector ?? "";
@@ -259,14 +259,14 @@ async function evaluateSignTransactionPolicy(
   //   - EIP-7702 (type-4): the tx `to` is the user's OWN delegated EOA (variable
   //     per user), so pinning `to` is meaningless. Instead, EVERY authorization
   //     delegate target must be in wallet_delegate_allowlist for this (key, chain)
-  //     — i.e. the EOA may only delegate to a known SweepDelegate implementation.
+  //     — i.e. the EOA may only delegate to a known delegate implementation.
   //     A single unlisted delegate denies the whole tx (fail-closed).
   //
-  //   - type-2 / legacy: the `to` (the SweepRouter) must be in
+  //   - type-2 / legacy: the `to` (the target contract) must be in
   //     wallet_destination_allowlist for this (key, chain).
   const authAddresses = txFields.authorizationAddresses ?? [];
   if (authAddresses.length > 0) {
-    // (i) Every authorization must delegate to an allowlisted SweepDelegate impl.
+    // (i) Every authorization must delegate to an allowlisted delegate impl.
     for (const delegate of authAddresses) {
       const delegateRow = await db
         .selectFrom("wallet_delegate_allowlist")
@@ -282,7 +282,7 @@ async function evaluateSignTransactionPolicy(
     }
 
     // (ii) The tx `to` MUST be one of the recovered authorizing EOAs. In a 7702
-    // sweep the relayer calls the user's OWN delegated EOA; `to` and the
+    // call the relayer calls the user's OWN delegated EOA; `to` and the
     // authorization_list are otherwise independent fields, so without this an
     // allowlisted delegate could be paired with an arbitrary `to` (a target the
     // user never authorized). Fail-closed: no recovered authorities ⇒ deny.

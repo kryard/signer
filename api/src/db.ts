@@ -100,7 +100,7 @@ export interface WalletDelegateAllowlistTable {
   organization_id: string;
   private_key_id: string;
   chain_id: string; // bigint stored as string
-  delegate_address: string; // EIP-7702 delegation target (SweepDelegate impl)
+  delegate_address: string; // EIP-7702 delegation target (the delegate implementation)
   created_at: Generated<Date>;
 }
 

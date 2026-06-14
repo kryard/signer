@@ -33,7 +33,7 @@ type TxFields struct {
 	// AuthorizationAddresses holds the delegation target addresses from an
 	// EIP-7702 (type-4) transaction's authorization_list — the contract code
 	// each authorizing EOA delegates to. Empty for type-2 / legacy. Policy uses
-	// these to allowlist the delegate IMPLEMENTATION (the `to` of a 7702 sweep
+	// these to allowlist the delegate IMPLEMENTATION (the `to` of a 7702 call
 	// is the user's own EOA, not a fixed router, so destination-allowlisting
 	// the `to` does not apply).
 	AuthorizationAddresses []string
@@ -41,7 +41,7 @@ type TxFields struct {
 	// AuthorizationAuthorities holds the recovered signer (authority) of each
 	// authorization tuple — the EOA that consented to the delegation. Empty for
 	// type-2 / legacy. Policy requires the tx `to` to be one of these: a 7702
-	// sweep must call an EOA that ACTUALLY authorized the delegation, never an
+	// call must target an EOA that ACTUALLY authorized the delegation, never an
 	// arbitrary target. Tuples whose signature fails to recover are omitted (so
 	// they cannot satisfy the `to ∈ authorities` check). Same index order as the
 	// authorization_list.

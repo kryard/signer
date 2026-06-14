@@ -71,7 +71,7 @@ async function checkStampReplay(
     }
   }
 
-  // Opportunistic expiry sweep (no scheduler in the Workers runtime).
+  // Opportunistic expiry cleanup (no scheduler in the Workers runtime).
   if (Math.floor(Math.random() * CLEANUP_ONE_IN) === 0) {
     await db
       .deleteFrom("used_stamps")

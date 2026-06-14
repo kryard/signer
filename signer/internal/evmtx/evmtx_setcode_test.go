@@ -22,9 +22,9 @@ import (
 const (
 	userPrivHex    = "6cbed15c793ce57650b9877cf6fa156fbef513c4e6134f022a85b1ffdd59b2a1"
 	userKeyAddress = "0xFFcf8FDEE72ac11b5c542428B35EEF5769C409f0"
-	// The SweepDelegate implementation the user delegates their EOA to.
+	// The delegate implementation the user delegates their EOA to.
 	delegateImplAddr = "0x00000000000000000000000000000000DEADbeEF"
-	sweepSelector    = "0x7fea8778"
+	exampleSelector    = "0x7fea8778"
 )
 
 // authTuple mirrors a single EIP-7702 authorization tuple for RLP encoding:
@@ -64,7 +64,7 @@ func loadKey(t *testing.T, privHex string) *ecdsa.PrivateKey {
 
 // buildUnsignedSetCodeTx constructs a valid unsigned EIP-7702 tx hex: the user
 // signs an authorization delegating their EOA to delegateImplAddr, and the tx
-// (sent by the relayer) calls the user's now-delegated EOA with sweep calldata.
+// (sent by the relayer) calls the user's now-delegated EOA with example calldata.
 func buildUnsignedSetCodeTx(t *testing.T, chainID *big.Int) (unsignedHex string, userAddr common.Address) {
 	t.Helper()
 	userKey := loadKey(t, userPrivHex)
@@ -81,7 +81,7 @@ func buildUnsignedSetCodeTx(t *testing.T, chainID *big.Int) (unsignedHex string,
 		t.Fatalf("SignSetCode: %v", err)
 	}
 
-	data, _ := hex.DecodeString(strings.TrimPrefix(sweepSelector, "0x"))
+	data, _ := hex.DecodeString(strings.TrimPrefix(exampleSelector, "0x"))
 
 	unsigned := setCodeUnsigned{
 		ChainID:              chainID,
@@ -166,8 +166,8 @@ func TestSetCodeSignAndRecover(t *testing.T) {
 	if !strings.EqualFold(result.Fields.To, userAddr.Hex()) {
 		t.Errorf("fields.To = %q, want user EOA %q", result.Fields.To, userAddr.Hex())
 	}
-	if result.Fields.MethodSelector != sweepSelector {
-		t.Errorf("fields.MethodSelector = %q, want %q", result.Fields.MethodSelector, sweepSelector)
+	if result.Fields.MethodSelector != exampleSelector {
+		t.Errorf("fields.MethodSelector = %q, want %q", result.Fields.MethodSelector, exampleSelector)
 	}
 	if len(result.Fields.AuthorizationAddresses) != 1 ||
 		!strings.EqualFold(result.Fields.AuthorizationAddresses[0], delegateImplAddr) {
@@ -194,8 +194,8 @@ func TestSetCodeParseMatchesSign(t *testing.T) {
 	if !strings.EqualFold(fields.To, userAddr.Hex()) {
 		t.Errorf("parse fields.To = %q, want %q", fields.To, userAddr.Hex())
 	}
-	if fields.MethodSelector != sweepSelector {
-		t.Errorf("parse fields.MethodSelector = %q, want %q", fields.MethodSelector, sweepSelector)
+	if fields.MethodSelector != exampleSelector {
+		t.Errorf("parse fields.MethodSelector = %q, want %q", fields.MethodSelector, exampleSelector)
 	}
 	if len(fields.AuthorizationAddresses) != 1 ||
 		!strings.EqualFold(fields.AuthorizationAddresses[0], delegateImplAddr) {

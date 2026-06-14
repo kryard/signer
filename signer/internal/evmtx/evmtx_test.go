@@ -207,7 +207,7 @@ func TestLegacyFieldExtraction(t *testing.T) {
 
 // TestMethodSelectorExtraction verifies the first 4 bytes of calldata are extracted correctly.
 func TestMethodSelectorExtraction(t *testing.T) {
-	// Build an EIP-1559 unsigned tx with calldata starting 0x7fea8778 (sweep-like selector).
+	// Build an EIP-1559 unsigned tx with calldata starting 0x7fea8778 (example selector).
 	ecKey := loadTestKey(t)
 
 	// We construct a custom unsigned tx with 4+ bytes of calldata.

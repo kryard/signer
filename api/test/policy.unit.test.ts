@@ -216,7 +216,7 @@ describe("policy engine — sign_transaction", () => {
     await seedDestination(organizationId, privateKeyId, CHAIN_1, ROUTER_CHAIN1);
   });
 
-  it("conforming sweep tx → ALLOW", async () => {
+  it("conforming tx → ALLOW", async () => {
     const result = await evaluatePolicy(tdb.db, {
       organizationId,
       actorId,
@@ -404,7 +404,7 @@ describe("policy engine — empty selector rejection", () => {
     expect(result.reasonCode).toBe("METHOD_NOT_ALLOWED");
   });
 
-  it("tx with sweep selector still allowed when allowlist contains it", async () => {
+  it("tx with allowlisted selector still allowed when allowlist contains it", async () => {
     const result = await evaluatePolicy(tdb.db, {
       organizationId,
       actorId,

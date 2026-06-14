@@ -1,14 +1,14 @@
 /**
- * Integration test: EIP-7702 (type-4) sweep policy — Workstream A (AC: 7702 path).
+ * Integration test: EIP-7702 (type-4) delegation policy — Workstream A (AC: 7702 path).
  *
  * For a type-4 tx the `to` is the user's OWN delegated EOA, so policy does NOT
  * pin `to`; instead it requires every authorization delegate target to be in
  * wallet_delegate_allowlist for the (key, chain). This verifies:
- *   - a 7702 sweep whose authorization delegates to the allowlisted SweepDelegate
+ *   - a 7702 call whose authorization delegates to the allowlisted delegate
  *     impl, with an allowed selector + chain → ALLOW + signs (type-4 output).
- *   - a 7702 sweep delegating to an UNLISTED impl → DENY (DELEGATE_NOT_ALLOWED),
+ *   - a 7702 call delegating to an UNLISTED impl → DENY (DELEGATE_NOT_ALLOWED),
  *     signer not asked to sign.
- *   - a 7702 sweep on a chain with no rule → DENY (CHAIN_NOT_ALLOWED).
+ *   - a 7702 call on a chain with no rule → DENY (CHAIN_NOT_ALLOWED).
  *
  * Requires Docker (Postgres) + the Go signer (parses + signs type-4). Skips if Go
  * is absent.
@@ -25,7 +25,7 @@ import type { ApiKeyStamper } from "@turnkey/api-key-stamper";
 
 const SWEEP_SELECTOR = "0x7fea8778";
 const CHAIN_ID = 1;
-// The allowlisted SweepDelegate implementation (checksummed).
+// The allowlisted delegate implementation (checksummed).
 const DELEGATE_IMPL = getAddress("0x00000000000000000000000000000000deadbeef");
 // A different, NOT-allowlisted delegate impl.
 const EVIL_DELEGATE = getAddress("0x00000000000000000000000000000000baddcafe");
@@ -69,7 +69,7 @@ beforeAll(async () => {
   };
   privateKeyId = json.activity.result.createPrivateKeysResult.privateKeyIds[0];
 
-  // Seed the 7702 sweep policy on chain 1: binding + rule (selector) + delegate allowlist.
+  // Seed the 7702 call policy on chain 1: binding + rule (selector) + delegate allowlist.
   await tdb.db.insertInto("policy_bindings").values({
     id: randomUUID(),
     organization_id: organizationId,
@@ -104,7 +104,7 @@ afterAll(async () => {
 });
 
 /** Build an UNSIGNED type-4 tx: the user delegates their EOA to `delegate`, and
- *  the relayer's tx calls `to` (defaults to the user's own EOA) with sweep
+ *  the relayer's tx calls `to` (defaults to the user's own EOA) with example
  *  calldata. `to` is overridable to exercise the `to ∈ authorities` guard. */
 async function buildUnsignedSetCodeTx(
   delegate: Hex,
@@ -126,7 +126,7 @@ async function buildUnsignedSetCodeTx(
   });
 }
 
-async function submitSetCodeSweep(unsignedTransaction: string) {
+async function submitSetCodeTx(unsignedTransaction: string) {
   const body = {
     type: "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
     organizationId,
@@ -144,7 +144,7 @@ async function submitSetCodeSweep(unsignedTransaction: string) {
   };
 }
 
-describe("EIP-7702 sweep policy (Workstream A)", () => {
+describe("EIP-7702 call policy (Workstream A)", () => {
   it("skip when go is absent", () => {
     if (!goAvailable) console.warn("[policy7702.int] Go toolchain absent — skipped.");
     expect(true).toBe(true);
@@ -153,7 +153,7 @@ describe("EIP-7702 sweep policy (Workstream A)", () => {
   it("allowed delegate + selector + chain → ALLOW + signs a type-4 tx", async () => {
     if (!goAvailable) return;
     const unsigned = await buildUnsignedSetCodeTx(DELEGATE_IMPL, CHAIN_ID);
-    const json = await submitSetCodeSweep(unsigned);
+    const json = await submitSetCodeTx(unsigned);
 
     expect(json.activity.status).toBe("ACTIVITY_STATUS_COMPLETED");
     expect(json.activity.failure).toBeNull();
@@ -167,7 +167,7 @@ describe("EIP-7702 sweep policy (Workstream A)", () => {
   it("delegate NOT in allowlist → DENY (DELEGATE_NOT_ALLOWED)", async () => {
     if (!goAvailable) return;
     const unsigned = await buildUnsignedSetCodeTx(EVIL_DELEGATE, CHAIN_ID);
-    const json = await submitSetCodeSweep(unsigned);
+    const json = await submitSetCodeTx(unsigned);
 
     expect(json.activity.status).toBe("ACTIVITY_STATUS_FAILED");
     expect(json.activity.failure?.code).toBe("DELEGATE_NOT_ALLOWED");
@@ -180,7 +180,7 @@ describe("EIP-7702 sweep policy (Workstream A)", () => {
     // check passes; the `to ∈ authorities` guard must still deny.
     const otherTarget = getAddress("0x000000000000000000000000000000000000c0de");
     const unsigned = await buildUnsignedSetCodeTx(DELEGATE_IMPL, CHAIN_ID, otherTarget);
-    const json = await submitSetCodeSweep(unsigned);
+    const json = await submitSetCodeTx(unsigned);
 
     expect(json.activity.status).toBe("ACTIVITY_STATUS_FAILED");
     expect(json.activity.failure?.code).toBe("DESTINATION_NOT_ALLOWED");
@@ -191,7 +191,7 @@ describe("EIP-7702 sweep policy (Workstream A)", () => {
     // chain 999 has no wallet_policy_rules row, even though the delegate is the
     // allowlisted impl — fail-closed on the unknown chain.
     const unsigned = await buildUnsignedSetCodeTx(DELEGATE_IMPL, 999);
-    const json = await submitSetCodeSweep(unsigned);
+    const json = await submitSetCodeTx(unsigned);
 
     expect(json.activity.status).toBe("ACTIVITY_STATUS_FAILED");
     expect(json.activity.failure?.code).toBe("CHAIN_NOT_ALLOWED");
